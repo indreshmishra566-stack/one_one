@@ -1,0 +1,462 @@
+{% extends 'core/base.html' %}
+{% block title %}Go Live — SkillX{% endblock %}
+{% block extra_css %}
+<style>
+  .lobby-wrap {
+    min-height: calc(100vh - 60px);
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
+    padding: 2rem 1.5rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ── Hero Panel ── */
+  .hero-panel { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .live-hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 3rem 2.5rem;
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+  }
+  .live-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 70% 60% at 50% -10%, rgba(124,106,247,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .live-hero h1 { font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 0.75rem; }
+  .live-hero h1 em { font-style: italic; color: var(--accent); }
+  .live-hero p { color: var(--muted); max-width: 480px; margin: 0 auto 2rem; }
+
+  /* Go Live Button */
+  .go-live-btn {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, #7c6af7, #f7936a);
+    color: #fff;
+    border: none; border-radius: 99px;
+    padding: 16px 40px;
+    font-family: var(--sans); font-size: 1.1rem; font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 0 0 0 rgba(124,106,247,0.5);
+  }
+  .go-live-btn:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 32px rgba(124,106,247,0.45);
+  }
+  .go-live-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .go-live-btn.pulsing {
+    animation: livePulse 1.5s ease-in-out infinite;
+  }
+  @keyframes livePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(124,106,247,0.5); }
+    50% { box-shadow: 0 0 0 16px rgba(124,106,247,0); }
+  }
+  .live-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    animation: blink 1s step-start infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Queue State */
+  .queue-state {
+    display: none;
+    flex-direction: column; align-items: center; gap: 1rem;
+    margin-top: 1rem;
+  }
+  .queue-state.active { display: flex; }
+
+  .spinner-ring {
+    width: 64px; height: 64px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .queue-text { color: var(--muted); font-size: 0.9rem; }
+  .queue-count { font-family: var(--mono); color: var(--accent); font-size: 1.2rem; font-weight: 600; }
+
+  .cancel-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 20px; border-radius: 8px;
+    font-family: var(--sans); font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .cancel-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* Matched Banner */
+  .matched-banner {
+    display: none;
+    background: linear-gradient(135deg, rgba(74,240,184,0.15), rgba(124,106,247,0.15));
+    border: 1px solid rgba(74,240,184,0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    flex-direction: column; align-items: center; gap: 0.75rem;
+  }
+  .matched-banner.active { display: flex; }
+  .matched-banner h3 { color: var(--accent3); font-size: 1.2rem; }
+  .matched-banner .partner-name { font-family: var(--mono); color: var(--text); font-size: 1rem; }
+  .match-score-pill {
+    background: rgba(124,106,247,0.2);
+    border: 1px solid rgba(124,106,247,0.3);
+    border-radius: 99px;
+    padding: 4px 14px;
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+  .enter-room-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent3); color: #0a0a0f;
+    border: none; border-radius: 8px;
+    padding: 12px 28px;
+    font-family: var(--sans); font-size: 1rem; font-weight: 700;
+    cursor: pointer; text-decoration: none;
+    transition: all 0.2s;
+  }
+  .enter-room-btn:hover { transform: scale(1.03); }
+
+  /* No Skills Warning */
+  .no-skills-warn {
+    background: rgba(247,147,106,0.08);
+    border: 1px solid rgba(247,147,106,0.25);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .no-skills-warn .icon { font-size: 1.5rem; flex-shrink: 0; }
+  .no-skills-warn a { color: var(--accent2); font-weight: 600; }
+
+  /* Stats Bar */
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+  }
+  .stat-number {
+    font-family: var(--serif);
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* Sidebar */
+  .side-panel { display: flex; flex-direction: column; gap: 1rem; }
+
+  .skill-preview-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  .skill-preview-card h4 {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.75rem;
+  }
+  .skill-section { margin-bottom: 0.75rem; }
+  .skill-section-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 4px; }
+
+  .recent-matches { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+  .recent-matches h4 { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.75rem; }
+  .match-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .match-item:last-child { border-bottom: none; }
+  .match-item-info { flex: 1; min-width: 0; }
+  .match-item-name { font-weight: 600; font-size: 0.85rem; }
+  .match-item-score { font-family: var(--mono); font-size: 0.7rem; color: var(--accent); }
+  .avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; color: #fff; flex-shrink: 0; }
+
+  /* Log */
+  .ws-log {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem;
+    max-height: 90px;
+    overflow-y: auto;
+    line-height: 1.8;
+  }
+  .ws-log .log-line { display: block; }
+  .ws-log .log-line.ok { color: var(--accent3); }
+  .ws-log .log-line.warn { color: var(--accent2); }
+  .ws-log .log-line.err { color: var(--danger); }
+
+  @media (max-width: 768px) {
+    .lobby-wrap { grid-template-columns: 1fr; }
+    .side-panel { order: -1; }
+    .stats-bar { grid-template-columns: repeat(3,1fr); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="lobby-wrap">
+
+  <!-- ── Main Panel ── -->
+  <div class="hero-panel">
+
+    <!-- Go Live Card -->
+    <div class="live-hero">
+      <h1>Find Your <em>Perfect</em><br>Skill Match</h1>
+      <p>Go live and our AI-powered engine instantly pairs you with someone who has what you want — and wants what you have.</p>
+
+      {% if has_skills %}
+        <!-- Normal state -->
+        <div id="readyState">
+          <button class="go-live-btn" id="goLiveBtn" onclick="goLive()">
+            <span class="live-dot"></span>
+            Go Live
+          </button>
+          <div style="margin-top: 1rem; color: var(--muted); font-size: 0.8rem;">
+            <span id="queueBadge" class="badge badge-purple">{{ queue_size }} in queue</span>
+          </div>
+        </div>
+
+        <!-- Searching state (hidden initially) -->
+        <div class="queue-state" id="queueState">
+          <div class="spinner-ring"></div>
+          <div class="queue-count" id="queueCount">{{ queue_size }} searching</div>
+          <div class="queue-text" id="queueMsg">Scanning skill compatibility...</div>
+          <button class="cancel-btn" onclick="cancelQueue()">Cancel</button>
+        </div>
+
+        <!-- Matched state (hidden initially) -->
+        <div class="matched-banner" id="matchedBanner">
+          <div style="font-size: 2rem;">🎯</div>
+          <h3>Match Found!</h3>
+          <div class="partner-name" id="partnerName">—</div>
+          <div class="match-score-pill" id="matchScore">—% compatible</div>
+          <a href="#" class="enter-room-btn" id="enterRoomBtn">Enter Live Room →</a>
+        </div>
+
+      {% else %}
+        <div class="no-skills-warn" style="max-width:480px; margin:0 auto;">
+          <div class="icon">⚠️</div>
+          <div>Set up your skill profile before going live. <a href="{% url 'edit_profile' %}">Update profile →</a></div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-number" id="liveCount">{{ queue_size }}</div>
+        <div class="stat-label">Live Now</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">{{ my_matches }}</div>
+        <div class="stat-label">Your Matches</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" style="color: var(--accent);">AI</div>
+        <div class="stat-label">Smart Engine</div>
+      </div>
+    </div>
+
+    <!-- Browse matches -->
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a href="{% url 'find_match' %}" class="btn btn-outline">🔍 Browse Smart Matches</a>
+      <a href="{% url 'my_matches' %}" class="btn btn-ghost">My Matches →</a>
+    </div>
+
+    {% if has_skills %}
+    <!-- WS debug log -->
+    <div class="ws-log" id="wsLog">
+      <span class="log-line">Ready. Click Go Live to connect...</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Sidebar ── -->
+  <div class="side-panel">
+
+    <!-- Your Skills -->
+    <div class="skill-preview-card">
+      <h4>Your Skills</h4>
+      {% if profile.skills_have %}
+        <div class="skill-section">
+          <div class="skill-section-label" style="color:var(--accent3);">I Can Teach</div>
+          <div class="skill-tags">
+            {% for s in profile.get_skills_have_list %}
+              <span class="skill-tag have">{{ s }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      {% if profile.skills_want %}
+        <div class="skill-section">
+          <div class="skill-section-label" style="color:var(--accent2);">I Want to Learn</div>
+          <div class="skill-tags">
+            {% for s in profile.get_skills_want_list %}
+              <span class="skill-tag want">{{ s }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      <div style="margin-top:0.75rem;">
+        <a href="{% url 'edit_profile' %}" class="btn btn-ghost btn-sm" style="padding:6px 0; font-size:0.75rem;">✏️ Edit Skills</a>
+      </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="skill-preview-card">
+      <h4>How Smart Matching Works</h4>
+      <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:0.5rem;">
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:0.82rem;">
+          <span style="color:var(--accent); font-weight:700; flex-shrink:0;">1.0</span>
+          <span><strong>Exact</strong> — "Python" = "Python"</span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:0.82rem;">
+          <span style="color:var(--accent); font-weight:700; flex-shrink:0;">0.7</span>
+          <span><strong>Cluster</strong> — "Django" ≈ "Flask" ≈ "Backend"</span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:0.82rem;">
+          <span style="color:var(--accent); font-weight:700; flex-shrink:0;">0.45</span>
+          <span><strong>Tag</strong> — "Photography" ≈ "Figma" via <em>visual</em></span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:0.82rem;">
+          <span style="color:var(--accent); font-weight:700; flex-shrink:0;">0.25</span>
+          <span><strong>Partial</strong> — "Java" ≈ "JavaScript"</span>
+        </div>
+      </div>
+      <div style="margin-top:1rem; padding-top:0.75rem; border-top:1px solid var(--border); font-size:0.75rem; color:var(--muted);">
+        Minimum score of 35% required in both directions for a match.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% if has_skills %}
+<script>
+  let ws = null;
+  let matchedRoomId = null;
+
+  function log(msg, cls = '') {
+    const log = document.getElementById('wsLog');
+    const line = document.createElement('span');
+    line.className = `log-line ${cls}`;
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    log.appendChild(document.createElement('br'));
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function goLive() {
+    if (ws) return;
+
+    // Switch to queue UI
+    document.getElementById('readyState').style.display = 'none';
+    document.getElementById('queueState').classList.add('active');
+
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${window.location.host}/ws/queue/`);
+
+    ws.onopen = () => {
+      log('Connected to live queue ✓', 'ok');
+    };
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+
+      if (data.type === 'queued') {
+        log(data.message, 'ok');
+        updateQueueCount(data.queue_size);
+      }
+
+      else if (data.type === 'searching') {
+        updateQueueCount(data.queue_size);
+        const dots = '.'.repeat((data.attempt % 3) + 1);
+        document.getElementById('queueMsg').textContent = `Scanning skill compatibility${dots}`;
+        log(`Attempt ${data.attempt} — ${data.queue_size} users in queue`);
+      }
+
+      else if (data.type === 'matched') {
+        matchedRoomId = data.room_id;
+        const score = Math.round(data.score * 100);
+        log(`🎯 Matched with ${data.partner_username} (${score}% compatible)!`, 'ok');
+        showMatched(data.partner_username, score, data.room_id);
+        ws.close();
+        ws = null;
+      }
+
+      else if (data.type === 'timeout') {
+        log(data.message, 'warn');
+        resetToReady();
+      }
+    };
+
+    ws.onerror = () => {
+      log('WebSocket error. Is Redis running?', 'err');
+      resetToReady();
+    };
+
+    ws.onclose = () => {
+      if (!matchedRoomId) log('Disconnected from queue.');
+    };
+  }
+
+  function cancelQueue() {
+    if (ws) { ws.close(); ws = null; }
+    log('Left the queue.');
+    resetToReady();
+  }
+
+  function resetToReady() {
+    document.getElementById('queueState').classList.remove('active');
+    document.getElementById('matchedBanner').classList.remove('active');
+    document.getElementById('readyState').style.display = '';
+    matchedRoomId = null;
+  }
+
+  function showMatched(partnerUsername, scorePct, roomId) {
+    document.getElementById('queueState').classList.remove('active');
+    document.getElementById('partnerName').textContent = `@${partnerUsername}`;
+    document.getElementById('matchScore').textContent = `${scorePct}% compatible`;
+    document.getElementById('enterRoomBtn').href = `/live/room/${roomId}/`;
+    document.getElementById('matchedBanner').classList.add('active');
+  }
+
+  function updateQueueCount(n) {
+    document.getElementById('queueCount').textContent = `${n} searching`;
+    document.getElementById('liveCount').textContent = n;
+  }
+
+  // Poll queue size every 5s for the stat card
+  setInterval(() => {
+    fetch('/api/queue-status/')
+      .then(r => r.json())
+      .then(d => {
+        if (!document.getElementById('queueState').classList.contains('active')) {
+          document.getElementById('liveCount').textContent = d.queue_size;
+          document.getElementById('queueBadge').textContent = `${d.queue_size} in queue`;
+        }
+      });
+  }, 5000);
+</script>
+{% endif %}
+{% endblock %}

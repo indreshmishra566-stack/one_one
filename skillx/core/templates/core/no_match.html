@@ -1,0 +1,104 @@
+{% extends 'core/base.html' %}
+{% block title %}No Matches Yet — SkillX{% endblock %}
+{% block extra_css %}
+<style>
+  .no-match-wrap {
+    min-height: calc(100vh - 60px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .no-match-card {
+    max-width: 520px; width: 100%;
+    text-align: center;
+  }
+  .no-match-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    display: block;
+    filter: grayscale(0.2);
+  }
+  .no-match-card h2 { margin-bottom: 0.75rem; }
+  .no-match-card p { color: var(--muted); margin-bottom: 2rem; line-height: 1.7; }
+  .tips-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin: 2rem 0;
+    text-align: left;
+  }
+  .tip-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    font-size: 0.85rem;
+  }
+  .tip-card strong { display: block; margin-bottom: 4px; color: var(--text); }
+  .tip-card span { color: var(--muted); }
+  .your-skills { margin: 1.5rem 0; }
+  .skills-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+  .skills-row-label {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; width: 80px; flex-shrink: 0; padding-top: 4px;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="no-match-wrap">
+  <div class="no-match-card">
+    <span class="no-match-icon">🔍</span>
+    <h2>No Matches Found Yet</h2>
+    <p>We couldn't find anyone who matches your skill exchange profile right now. More users join every day — try updating your skills or check back soon!</p>
+
+    {% if current_profile.skills_have or current_profile.skills_want %}
+    <div class="your-skills card">
+      <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:1rem;">Your Current Profile</div>
+      {% if current_profile.skills_have %}
+      <div class="skills-row">
+        <div class="skills-row-label" style="color:var(--accent3);">I Teach</div>
+        <div class="skill-tags">
+          {% for skill in current_profile.get_skills_have_list %}
+            <span class="skill-tag have">{{ skill }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if current_profile.skills_want %}
+      <div class="skills-row">
+        <div class="skills-row-label" style="color:var(--accent2);">I Learn</div>
+        <div class="skill-tags">
+          {% for skill in current_profile.get_skills_want_list %}
+            <span class="skill-tag want">{{ skill }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="tips-grid">
+      <div class="tip-card">
+        <strong>🎯 Add More Skills</strong>
+        <span>The more skills you list, the more likely you'll find a match.</span>
+      </div>
+      <div class="tip-card">
+        <strong>🌐 Be Specific</strong>
+        <span>Try "Django" instead of just "Programming".</span>
+      </div>
+      <div class="tip-card">
+        <strong>⏰ Check Back</strong>
+        <span>New users join daily. Your match might be signing up right now.</span>
+      </div>
+      <div class="tip-card">
+        <strong>📚 Learn First</strong>
+        <span>Broaden your teachable skills to increase match chances.</span>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+      <a href="{% url 'edit_profile' %}" class="btn btn-primary">✏️ Update My Skills</a>
+      <a href="{% url 'find_match' %}" class="btn btn-outline">🔄 Search Again</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

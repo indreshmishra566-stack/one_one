@@ -1,0 +1,61 @@
+{% extends 'core/base.html' %}
+{% block title %}My Matches — SkillX{% endblock %}
+{% block extra_css %}
+<style>
+  .matches-table-wrap { margin-top: 1.5rem; }
+  .match-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 0.75rem;
+    display: flex; align-items: center; gap: 1rem;
+    transition: border-color 0.2s;
+  }
+  .match-row:hover { border-color: var(--accent); }
+  .match-row-info { flex: 1; min-width: 0; }
+  .match-row-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .match-row-date { color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
+  .empty-state {
+    text-align: center; padding: 4rem 2rem;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container" style="padding-top: 2.5rem;">
+  <div class="flex-center justify-between mb-4">
+    <div>
+      <h1 style="font-size:2rem;">My Matches</h1>
+      <p class="muted">All your skill exchange connections</p>
+    </div>
+    <a href="{% url 'find_match' %}" class="btn btn-primary">🔍 Find More</a>
+  </div>
+
+  {% if match_data %}
+    <div class="matches-table-wrap">
+      {% for item in match_data %}
+        <div class="match-row">
+          <div class="avatar">{{ item.other_user.username|first|upper }}</div>
+          <div class="match-row-info">
+            <div class="match-row-name">
+              {{ item.other_user.username }}
+              <span class="badge badge-purple">Matched</span>
+            </div>
+            <div class="match-row-date">Since {{ item.match.created_at|date:"F j, Y" }}</div>
+          </div>
+          <a href="{% url 'chat' item.other_user.username %}" class="btn btn-outline btn-sm">💬 Chat</a>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state card">
+      <div class="icon">🤝</div>
+      <h3>No matches yet</h3>
+      <p style="margin: 0.75rem 0 1.5rem;">Complete your profile and search for matches to get started.</p>
+      <a href="{% url 'edit_profile' %}" class="btn btn-primary">Set Up Profile</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

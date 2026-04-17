@@ -1,0 +1,277 @@
+{% extends 'core/base.html' %}
+{% block title %}Live Session — SkillX{% endblock %}
+{% block extra_css %}
+<style>
+  .live-room-wrap {
+    max-width: 800px; margin: 0 auto;
+    height: calc(100vh - 60px);
+    display: flex; flex-direction: column;
+    padding: 1.25rem;
+    gap: 0;
+  }
+  .room-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px 12px 0 0;
+    padding: 1rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .room-title { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(247,90,90,0.15); color: #f75a5a;
+    border: 1px solid rgba(247,90,90,0.3);
+    border-radius: 99px; padding: 3px 10px;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  }
+  .live-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #f75a5a; animation: blink 1s step-start infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .room-id-mono { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+
+  .messages-area {
+    flex: 1;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex; flex-direction: column; gap: 0.6rem;
+    min-height: 0;
+  }
+  .messages-area::-webkit-scrollbar { width: 4px; }
+  .messages-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg-wrap { display: flex; gap: 8px; max-width: 75%; }
+  .msg-wrap.mine { align-self: flex-end; flex-direction: row-reverse; }
+  .msg-av { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: #fff; flex-shrink: 0; align-self: flex-end; }
+  .msg-av.mine-av { background: linear-gradient(135deg, var(--accent), #9b8ef7); }
+  .msg-av.their-av { background: linear-gradient(135deg, var(--accent2), #f7b36a); }
+  .msg-body { display: flex; flex-direction: column; gap: 2px; }
+  .msg-wrap.mine .msg-body { align-items: flex-end; }
+  .msg-bubble { padding: 9px 14px; border-radius: 16px; font-size: 0.9rem; line-height: 1.5; word-break: break-word; }
+  .msg-bubble.mine-b { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .msg-bubble.their-b { background: var(--surface2); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .msg-time { font-size: 0.68rem; color: var(--muted); padding: 0 4px; }
+
+  .system-msg { align-self: center; font-size: 0.75rem; color: var(--muted); font-style: italic; padding: 4px 0; }
+
+  .typing-indicator {
+    display: none; align-items: center; gap: 6px;
+    font-size: 0.78rem; color: var(--muted); padding: 4px 0;
+  }
+  .typing-indicator.show { display: flex; }
+  .typing-dots span { display: inline-block; width: 5px; height: 5px; background: var(--muted); border-radius: 50%; animation: typeDot 1.2s infinite; }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typeDot { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+
+  .chat-input-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 1rem 1.25rem;
+    display: flex; gap: 8px;
+  }
+  .live-msg-input {
+    flex: 1;
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 99px !important;
+    padding: 10px 18px !important;
+    font-size: 0.9rem;
+    outline: none;
+  }
+  .live-msg-input:focus { border-color: var(--accent) !important; }
+  .send-btn {
+    background: var(--accent); border: none; border-radius: 99px;
+    color: #fff; padding: 10px 20px;
+    font-weight: 700; font-size: 0.9rem; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .send-btn:hover { background: #6a58e0; }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .conn-status {
+    font-size: 0.75rem; display: flex; align-items: center; gap: 5px;
+  }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .conn-dot.connected { background: var(--accent3); }
+  .conn-dot.connecting { background: var(--accent2); animation: blink 0.8s step-start infinite; }
+  .conn-dot.disconnected { background: var(--danger); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="live-room-wrap">
+  <div class="room-header">
+    <div class="room-title">
+      <span class="live-badge">Live</span>
+      <span>Skill Exchange Session</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="conn-status">
+        <div class="conn-dot connecting" id="connDot"></div>
+        <span id="connText" style="color:var(--muted);">Connecting…</span>
+      </div>
+      <span class="room-id-mono">room: {{ room_id }}</span>
+      <a href="{% url 'live_lobby' %}" class="btn btn-ghost btn-sm">← Leave</a>
+    </div>
+  </div>
+
+  <div class="messages-area" id="msgArea">
+    {% for msg in past_messages %}
+      {% if msg.sender == request.user %}
+        <div class="msg-wrap mine">
+          <div class="msg-av mine-av">{{ request.user.username|first|upper }}</div>
+          <div class="msg-body">
+            <div class="msg-bubble mine-b">{{ msg.content }}</div>
+            <div class="msg-time">{{ msg.timestamp|date:"H:i" }}</div>
+          </div>
+        </div>
+      {% else %}
+        <div class="msg-wrap">
+          <div class="msg-av their-av">{{ msg.sender.username|first|upper }}</div>
+          <div class="msg-body">
+            <div class="msg-bubble their-b">{{ msg.content }}</div>
+            <div class="msg-time">{{ msg.timestamp|date:"H:i" }}</div>
+          </div>
+        </div>
+      {% endif %}
+    {% empty %}
+      <div class="system-msg">Session started. Say hello! 👋</div>
+    {% endfor %}
+
+    <div class="typing-indicator" id="typingIndicator">
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+      <span id="typingName">Someone</span> is typing…
+    </div>
+  </div>
+
+  <div class="chat-input-bar">
+    <input
+      type="text"
+      class="live-msg-input"
+      id="msgInput"
+      placeholder="Type your message…"
+      autocomplete="off"
+      disabled
+    >
+    <button class="send-btn" id="sendBtn" onclick="sendMsg()" disabled>Send ↑</button>
+  </div>
+</div>
+
+<script>
+  const ROOM_ID   = '{{ room_id }}';
+  const MY_NAME   = '{{ request.user.username }}';
+  const MY_INIT   = '{{ request.user.username|first|upper }}';
+  const msgArea   = document.getElementById('msgArea');
+  const input     = document.getElementById('msgInput');
+  const sendBtn   = document.getElementById('sendBtn');
+  let ws          = null;
+  let typingTimer = null;
+  let isTyping    = false;
+
+  function setConnected(ok, text) {
+    const dot = document.getElementById('connDot');
+    dot.className = 'conn-dot ' + (ok ? 'connected' : 'disconnected');
+    document.getElementById('connText').textContent = text;
+    input.disabled = !ok;
+    sendBtn.disabled = !ok;
+    if (ok) input.focus();
+  }
+
+  function connect() {
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${window.location.host}/ws/live/${ROOM_ID}/`);
+
+    ws.onopen = () => setConnected(true, 'Connected');
+    ws.onclose = () => { setConnected(false, 'Disconnected'); setTimeout(connect, 3000); };
+    ws.onerror = () => setConnected(false, 'Error');
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if      (data.type === 'message') appendMsg(data);
+      else if (data.type === 'system')  appendSystem(data.text);
+      else if (data.type === 'typing')  showTyping(data.sender, data.is_typing);
+    };
+  }
+
+  function appendMsg(data) {
+    const wrap = document.createElement('div');
+    wrap.className = `msg-wrap ${data.is_mine ? 'mine' : ''}`;
+
+    const av = document.createElement('div');
+    av.className = `msg-av ${data.is_mine ? 'mine-av' : 'their-av'}`;
+    av.textContent = data.sender[0].toUpperCase();
+
+    const body = document.createElement('div');
+    body.className = 'msg-body';
+
+    const bubble = document.createElement('div');
+    bubble.className = `msg-bubble ${data.is_mine ? 'mine-b' : 'their-b'}`;
+    bubble.textContent = data.content;
+
+    const time = document.createElement('div');
+    time.className = 'msg-time';
+    time.textContent = data.timestamp;
+
+    body.appendChild(bubble);
+    body.appendChild(time);
+    wrap.appendChild(av);
+    wrap.appendChild(body);
+
+    // Insert before typing indicator
+    const typing = document.getElementById('typingIndicator');
+    msgArea.insertBefore(wrap, typing);
+    msgArea.scrollTop = msgArea.scrollHeight;
+  }
+
+  function appendSystem(text) {
+    const div = document.createElement('div');
+    div.className = 'system-msg';
+    div.textContent = text;
+    const typing = document.getElementById('typingIndicator');
+    msgArea.insertBefore(div, typing);
+    msgArea.scrollTop = msgArea.scrollHeight;
+  }
+
+  function showTyping(sender, state) {
+    const el = document.getElementById('typingIndicator');
+    document.getElementById('typingName').textContent = sender;
+    el.classList.toggle('show', state);
+    msgArea.scrollTop = msgArea.scrollHeight;
+  }
+
+  function sendMsg() {
+    const content = input.value.trim();
+    if (!content || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: 'message', content }));
+    input.value = '';
+    // Stop typing
+    if (isTyping) {
+      isTyping = false;
+      ws.send(JSON.stringify({ type: 'typing', is_typing: false }));
+    }
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); return; }
+    // Typing indicator
+    if (!isTyping && ws && ws.readyState === WebSocket.OPEN) {
+      isTyping = true;
+      ws.send(JSON.stringify({ type: 'typing', is_typing: true }));
+    }
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+      if (isTyping && ws && ws.readyState === WebSocket.OPEN) {
+        isTyping = false;
+        ws.send(JSON.stringify({ type: 'typing', is_typing: false }));
+      }
+    }, 2000);
+  });
+
+  connect();
+  msgArea.scrollTop = msgArea.scrollHeight;
+</script>
+{% endblock %}

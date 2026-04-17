@@ -1,0 +1,41 @@
+{% extends 'core/base.html' %}
+{% block title %}Join SkillX{% endblock %}
+{% block extra_css %}
+<style>
+  .auth-wrap {
+    min-height: calc(100vh - 60px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .auth-card { width: 100%; max-width: 440px; }
+  .auth-header { text-align: center; margin-bottom: 2rem; }
+  .auth-header h1 { font-size: 2rem; margin-bottom: 6px; }
+  .auth-header p { color: var(--muted); }
+  .auth-footer { text-align: center; margin-top: 1.25rem; color: var(--muted); font-size: 0.875rem; }
+  .auth-footer a { color: var(--accent); text-decoration: none; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1>Create Account</h1>
+      <p>Start exchanging skills today</p>
+    </div>
+    <div class="card">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="form-group">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary w-full mt-2" style="justify-content:center;">Create Account</button>
+      </form>
+    </div>
+    <div class="auth-footer">Already have an account? <a href="{% url 'login' %}">Sign in</a></div>
+  </div>
+</div>
+{% endblock %}

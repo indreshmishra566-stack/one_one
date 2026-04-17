@@ -1,0 +1,103 @@
+{% extends 'core/base.html' %}
+{% block title %}Edit Profile — SkillX{% endblock %}
+{% block extra_css %}
+<style>
+  .profile-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .profile-sidebar .card { text-align: center; }
+  .sidebar-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; font-weight: 700; color: #fff;
+    margin: 0 auto 1rem;
+  }
+  .sidebar-username { font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
+  .sidebar-hint { color: var(--muted); font-size: 0.8rem; margin-top: 1rem; line-height: 1.5; }
+  .form-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .form-section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  @media (max-width: 680px) {
+    .profile-layout { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container" style="padding-top: 2.5rem;">
+  <div class="mb-4">
+    <h1 style="font-size: 2rem;">Your Profile</h1>
+    <p class="muted">Tell the community what you know and what you want to learn.</p>
+  </div>
+  <div class="profile-layout">
+    <div class="profile-sidebar">
+      <div class="card">
+        <div class="sidebar-avatar">{{ user.username|first|upper }}</div>
+        <div class="sidebar-username">{{ user.username }}</div>
+        <div class="muted" style="font-size:0.8rem;">{{ user.email }}</div>
+        {% if profile.skills_have %}
+          <hr class="divider">
+          <div style="text-align:left;">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent3);margin-bottom:6px;">I Can Teach</div>
+            <div class="skill-tags">
+              {% for skill in profile.get_skills_have_list %}
+                <span class="skill-tag have">{{ skill }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        {% if profile.skills_want %}
+          <div style="text-align:left; margin-top:1rem;">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent2);margin-bottom:6px;">I Want to Learn</div>
+            <div class="skill-tags">
+              {% for skill in profile.get_skills_want_list %}
+                <span class="skill-tag want">{{ skill }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        <p class="sidebar-hint">Separate skills with commas.<br>e.g. <span class="mono" style="font-size:0.75rem;">Python, Chess, Cooking</span></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="form-section-title">Skills</div>
+        <div class="form-group">
+          <label for="id_skills_have">{{ form.skills_have.label }}</label>
+          {{ form.skills_have }}
+          {% if form.skills_have.errors %}<ul class="errorlist">{% for e in form.skills_have.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+        <div class="form-group">
+          <label for="id_skills_want">{{ form.skills_want.label }}</label>
+          {{ form.skills_want }}
+          {% if form.skills_want.errors %}<ul class="errorlist">{% for e in form.skills_want.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+        <div class="form-section-title" style="margin-top: 1.5rem;">About</div>
+        <div class="form-group">
+          <label for="id_bio">{{ form.bio.label }}</label>
+          {{ form.bio }}
+        </div>
+        <div style="display:flex; gap:12px; margin-top:1.5rem;">
+          <button type="submit" class="btn btn-primary">Save & Find Matches →</button>
+          <a href="{% url 'find_match' %}" class="btn btn-outline">Skip for now</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
